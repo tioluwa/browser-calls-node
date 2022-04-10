@@ -6,6 +6,7 @@
 // Store some selectors for elements we'll reuse
 var callStatus = $("#call-status");
 var answerButton = $(".answer-button");
+var registerButton = $(".register-button");
 var callSupportButton = $(".call-support-button");
 var hangUpButton = $(".hangup-button");
 var callCustomerButtons = $(".call-customer-button");
@@ -16,10 +17,15 @@ function updateCallStatus(status) {
 }
 
 console.log("Requesting Access Token...");
-$(document).ready(function() {
-  $.post("/token/generate", {page: window.location.pathname})
-    .then(function(data){
-
+$(document).ready(function () {
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const clientId =
+    urlParams.get("clientId") == null ? "" : urlParams.get("clientId");
+  // console.log("search: ", clientId);
+  updateCallStatus(clientId + " Connecting to Twilio...");
+  $.post("/token/generate", { page: window.location.pathname, id: clientId })
+    .then(function (data) {
       // Setup Twilio.Device
       device = new Twilio.Device(data.token, {
         // Set Opus as our preferred codec. Opus generally performs better, requiring less bandwidth and
@@ -35,20 +41,20 @@ $(document).ready(function() {
         // changes the behavior of the SDK to consider a call `ringing` starting
         // from the connection to the TwiML backend to when the recipient of
         // the `Dial` verb answers.
-        enableRingingState: true
+        enableRingingState: true,
       });
 
-      device.on("ready", function(device) {
+      device.on("ready", function (device) {
         console.log("Twilio.Device Ready!");
-        updateCallStatus("Ready");
+        updateCallStatus(clientId + " Ready");
       });
 
-      device.on("error", function(error) {
+      device.on("error", function (error) {
         console.log("Twilio.Device Error: " + error.message);
         updateCallStatus("ERROR: " + error.message);
       });
 
-      device.on("connect", function(conn) {
+      device.on("connect", function (conn) {
         console.log("Successfully established call!");
         hangUpButton.prop("disabled", false);
         callCustomerButtons.prop("disabled", true);
@@ -65,44 +71,44 @@ $(document).ready(function() {
         }
       });
 
-      device.on("disconnect", function(conn) {
+      device.on("disconnect", function (conn) {
         // Disable the hangup button and enable the call buttons
         hangUpButton.prop("disabled", true);
         callCustomerButtons.prop("disabled", false);
         callSupportButton.prop("disabled", false);
 
-        updateCallStatus("Ready");
+        updateCallStatus(clientId + " Ready");
       });
 
-      device.on("incoming", function(conn) {
+      device.on("incoming", function (conn) {
         updateCallStatus("Incoming support call");
 
         // Set a callback to be executed when the connection is accepted
-        conn.accept(function() {
+        conn.accept(function () {
           updateCallStatus("In call with customer");
         });
 
         // Set a callback on the answer button and enable it
-        answerButton.click(function() {
+        answerButton.click(function () {
           conn.accept();
         });
         answerButton.prop("disabled", false);
       });
-
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.log(err);
       console.log("Could not get a token from server!");
     });
 
   initNewTicketForm();
+  callClient();
 });
 
 /* Call a customer from a support ticket */
 function callCustomer(phoneNumber) {
   updateCallStatus("Calling " + phoneNumber + "...");
 
-  var params = {"phoneNumber": phoneNumber};
+  var params = { phoneNumber: phoneNumber };
   device.connect(params);
 }
 
@@ -124,40 +130,58 @@ function initNewTicketForm() {
   var buttonEl = formEl.find(".btn.btn-primary");
 
   // button handler
-  formEl.find("[type='button']").click(function(e) {
+  formEl.find("[type='button']").click(function (e) {
     $.ajax({
-        url: '/tickets/new',
-        type: 'post',
-        data: formEl.serialize()
+      url: "/tickets/new",
+      type: "post",
+      data: formEl.serialize(),
     })
-    .done(function(){
-      showNotification("Support ticket was created successfully.", "success")
-      // clear form
-      formEl.find("input[type=text], textarea").val("");
-    })
-    .fail(function(res) {
-      showNotification("Support ticket request failed. " + res.responseText, "danger")
-    });
+      .done(function () {
+        showNotification("Support ticket was created successfully.", "success");
+        // clear form
+        formEl.find("input[type=text], textarea").val("");
+      })
+      .fail(function (res) {
+        showNotification(
+          "Support ticket request failed. " + res.responseText,
+          "danger"
+        );
+      });
+  });
+}
+
+function callClient() {
+  var formEl = $(".register-client");
+  var clientId = $(".client-id");
+
+  // button handler
+  formEl.find("[type='button']").click(function (ev) {
+    var data = formEl.serialize();
+    var items = data.split("=");
+    console.log("form data: ", items[1]);
+    updateCallStatus("Calling " + items[1] + "...");
+    var params = { client: items[1] };
+    device.connect(params);
   });
 }
 
 function showNotification(text, style) {
-  var alertStyle = "alert-"+style;
+  var alertStyle = "alert-" + style;
   var alertEl = $(".alert.ticket-support-notifications");
 
   if (alertEl.length == 0) {
-    alertEl = $("<div class=\"alert ticket-support-notifications\"></div>");
+    alertEl = $('<div class="alert ticket-support-notifications"></div>');
     $("body").before(alertEl);
   }
 
-  alertEl.removeClass (function (index, css) {
-    return (css.match (/(^|\s)alert-\S+/g) || []).join(' ');
+  alertEl.removeClass(function (index, css) {
+    return (css.match(/(^|\s)alert-\S+/g) || []).join(" ");
   });
 
   alertEl.addClass(alertStyle);
   alertEl.html(text);
 
-  setTimeout(clearNotifications, 4000)
+  setTimeout(clearNotifications, 4000);
 }
 
 function clearNotifications() {
