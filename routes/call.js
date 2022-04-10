@@ -8,6 +8,7 @@ const config = require('../config');
 // POST /calls/connect
 router.post('/connect', twilio.webhook({validate: false}), function(req, res, next) {
   var phoneNumber = req.body.phoneNumber;
+  var client = req.body.client;
   var callerId = config.twilioPhoneNumber;
   var twiml = new VoiceResponse();
 
@@ -15,7 +16,8 @@ router.post('/connect', twilio.webhook({validate: false}), function(req, res, ne
   if (phoneNumber) {
     dial.number({}, phoneNumber);
   } else {
-    dial.client({}, "support_agent");
+    console.log("calling: " + client);
+    dial.client({}, client);
   }
 
   res.send(twiml.toString());

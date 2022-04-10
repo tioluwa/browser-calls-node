@@ -34,7 +34,7 @@ block content
             p
               strong Status
             #call-status.well.well-sm
-              | Connecting to Twilio...
+              | Connecting to Twilio...          
             button.btn.btn-lg.btn-primary.call-support-button(onclick="callSupport()")
               span.glyphicon.glyphicon-earphone(aria-hidden="true")
               |  Call support
@@ -53,6 +53,14 @@ block content
             textarea(rows=3, name="description", placeholder='Add some description').form-control
           button.btn.btn-primary.btn-lg.btn-block(type='button') Submit ticket
             
-      small.pull-right
-        | Header photo courtesy
-        a(href="https://www.flickr.com/photos/tink20seven/4654348885/") David Sachs via Flickr
+    .row
+      .col-md-6.col-md-push-6
+        form(class="register-client")
+          .form-group
+            label Client Id
+            input.form-control.client-id(type='text', name="clientId", placeholder='Client1')
+          button.btn.btn-primary.btn-lg.btn-block(type='button') Call Client
+
+    small.pull-right
+      | Header photo courtesy
+      a(href="https://www.flickr.com/photos/tink20seven/4654348885/") David Sachs via Flickr
